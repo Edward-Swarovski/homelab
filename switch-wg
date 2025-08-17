@@ -1,0 +1,47 @@
+#!/bin/sh
+# Change interfaces peers in OpenWRT
+# create this file in /usr/sbin/
+# Usage: switch-wg <location>
+# Example: switch-wg hk-hkg.conf
+# If no argument is given, list all peers with index and description
+
+count=$(uci show network | grep '=wireguard_wg0' | wc -l)
+
+if [ -z "$1" ]; then
+    echo "Available WireGuard peers:"
+    for i in $(seq 0 $((count-1))); do
+        desc=$(uci -q get network.@wireguard_wg0[$i].description)
+        disabled=$(uci -q get network.@wireguard_wg0[$i].disabled)
+        iface=$(uci -q get network.@wireguard_wg0[$i].interface)
+        echo "  Index $i: $desc (disabled=$disabled, interface=${iface:-unset})"
+    done
+    exit 0
+fi
+
+TARGET_DESC="$1"
+FOUND=0
+
+echo "[INFO] Disabling all peers..."
+for i in $(seq 0 $((count-1))); do
+    uci set network.@wireguard_wg0[$i].disabled='1'
+done
+
+for i in $(seq 0 $((count-1))); do
+    desc=$(uci -q get network.@wireguard_wg0[$i].description)
+    if [ "$desc" = "$TARGET_DESC" ]; then
+        echo "[INFO] Enabling peer index $i ($desc)..."
+        uci set network.@wireguard_wg0[$i].disabled='0'
+        uci set network.@wireguard_wg0[$i].interface='wg0'
+        FOUND=1
+    fi
+done
+
+if [ "$FOUND" -eq 0 ]; then
+    echo "[ERROR] Peer with description '$TARGET_DESC' not found!"
+    exit 1
+fi
+
+uci commit network
+
+echo "[INFO] Restarting wg0 only..."
+ifdown wg0 && ifup wg0

@@ -1,14 +1,20 @@
 # STYRBAR Setup for Alexa Remote Control
 
-**Version:** 4.1 (Alexa-Optimized + Tested Z2M Device Triggers)  
-**Date:** 2026-01-12  
+**Version:** 4.2 (Toggle + Momentary Optimized)  
+**Date:** 2026-01-13  
 **Purpose:** Use IKEA STYRBAR as a smart remote for Alexa routines
 
-**What's New in v4.1:**
-- ✅ **Tested Z2M device triggers** - Confirmed working method
-- 🎯 **Single automation per STYRBAR** - Cleaner than 8 separate files
-- 📋 **Device trigger UI method** - Easy capture of device_id and subtypes
-- 🔧 **Production verified** - Based on working user setup
+**What's New in v4.2:**
+- ✨ **Toggle behavior for short press** - Press once ON, press again OFF
+- ⏱️ **Momentary for long press** - Auto-reset after 2 seconds
+- 🔄 **Conflict prevention** - Long press clears short press state
+- 🎯 **Better Alexa integration** - More flexible routine options
+- ✅ **Production tested** - Confirmed working pattern
+
+**Previous updates (v4.1):**
+- ✅ Tested Z2M device triggers
+- 🎯 Single automation per STYRBAR
+- 📋 Device trigger UI method
 
 ---
 
@@ -22,6 +28,10 @@ This RUNBOOK sets up your IKEA STYRBAR to control devices through **Alexa Routin
 3. Virtual switch appears in Alexa
 4. Alexa routine triggers based on switch state
 5. Alexa controls your devices
+
+**Button behavior:**
+- **Short press**: Toggle switch ON/OFF (persistent state)
+- **Long press**: Momentary ON for 2 seconds (auto-reset)
 
 **Perfect for:** Controlling Alexa-compatible devices (lights, switches, scenes, etc.) with physical buttons.
 
@@ -904,12 +914,8 @@ Create file: `templates/styrbar_[NAME].yaml`
           sequence:
             - target:
                 entity_id: input_boolean.styrbar_[NAME]_up_short_status
-              action: input_boolean.turn_on
-            - delay: 2
-            - target:
-                entity_id: input_boolean.styrbar_[NAME]_up_short_status
-              action: input_boolean.turn_off
-        
+              action: input_boolean.toggle
+
         # ===== UP LONG =====
         - conditions:
             - condition: trigger
@@ -922,7 +928,10 @@ Create file: `templates/styrbar_[NAME].yaml`
             - target:
                 entity_id: input_boolean.styrbar_[NAME]_up_long_status
               action: input_boolean.turn_off
-        
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_up_short_status
+              action: input_boolean.turn_off
+
         # ===== DOWN SHORT =====
         - conditions:
             - condition: trigger
@@ -930,12 +939,8 @@ Create file: `templates/styrbar_[NAME].yaml`
           sequence:
             - target:
                 entity_id: input_boolean.styrbar_[NAME]_down_short_status
-              action: input_boolean.turn_on
-            - delay: 2
-            - target:
-                entity_id: input_boolean.styrbar_[NAME]_down_short_status
-              action: input_boolean.turn_off
-        
+              action: input_boolean.toggle
+
         # ===== DOWN LONG =====
         - conditions:
             - condition: trigger
@@ -948,7 +953,10 @@ Create file: `templates/styrbar_[NAME].yaml`
             - target:
                 entity_id: input_boolean.styrbar_[NAME]_down_long_status
               action: input_boolean.turn_off
-        
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_down_short_status
+              action: input_boolean.turn_off
+
         # ===== LEFT SHORT =====
         - conditions:
             - condition: trigger
@@ -956,12 +964,8 @@ Create file: `templates/styrbar_[NAME].yaml`
           sequence:
             - target:
                 entity_id: input_boolean.styrbar_[NAME]_left_short_status
-              action: input_boolean.turn_on
-            - delay: 2
-            - target:
-                entity_id: input_boolean.styrbar_[NAME]_left_short_status
-              action: input_boolean.turn_off
-        
+              action: input_boolean.toggle
+
         # ===== LEFT LONG =====
         - conditions:
             - condition: trigger
@@ -974,7 +978,10 @@ Create file: `templates/styrbar_[NAME].yaml`
             - target:
                 entity_id: input_boolean.styrbar_[NAME]_left_long_status
               action: input_boolean.turn_off
-        
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_left_short_status
+              action: input_boolean.turn_off
+
         # ===== RIGHT SHORT =====
         - conditions:
             - condition: trigger
@@ -982,12 +989,8 @@ Create file: `templates/styrbar_[NAME].yaml`
           sequence:
             - target:
                 entity_id: input_boolean.styrbar_[NAME]_right_short_status
-              action: input_boolean.turn_on
-            - delay: 2
-            - target:
-                entity_id: input_boolean.styrbar_[NAME]_right_short_status
-              action: input_boolean.turn_off
-        
+              action: input_boolean.toggle
+
         # ===== RIGHT LONG =====
         - conditions:
             - condition: trigger
@@ -1000,9 +1003,31 @@ Create file: `templates/styrbar_[NAME].yaml`
             - target:
                 entity_id: input_boolean.styrbar_[NAME]_right_long_status
               action: input_boolean.turn_off
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_right_short_status
+              action: input_boolean.turn_off
   
   mode: single
 ```
+
+### Button Behavior Explained
+
+**SHORT PRESS (All 4 buttons: UP, DOWN, LEFT, RIGHT):**
+- **Toggles** the status switch ON/OFF
+- Status stays in that state until next press
+- Perfect for: Toggle actions (light on/off, switch toggle)
+
+**LONG PRESS (All 4 buttons: UP, DOWN, LEFT, RIGHT):**
+- Turns ON the long press status
+- Automatically turns OFF after 2 seconds (momentary)
+- **Also turns OFF the short press status** (prevents conflicts)
+- Perfect for: Momentary actions (scenes, brightness adjust)
+
+**Why This Works Better:**
+- Short press maintains state → Good for toggle routines
+- Long press is momentary → Good for scene/mode changes
+- Long press clears short press → Prevents conflicting states
+- More flexible Alexa routine options
 
 ### How to Find Z2M Device ID
 
@@ -1224,48 +1249,82 @@ Alexa controls your devices
 
 ### Create a Routine
 
-**Example: UP SHORT = Turn on living room lights**
+**Example 1: UP SHORT = Toggle living room lights ON/OFF**
 
-1. Open **Alexa app**
-2. Tap **More** (bottom menu)
-3. Tap **Routines**
-4. Tap **+** (create routine)
+Since UP SHORT uses **toggle**, you need **TWO routines**:
 
-**When:**
-1. Tap **When this happens**
-2. Choose **Smart Home**
+**Routine 1: Turn lights ON**
+1. Open **Alexa app** → **More** → **Routines** → **+**
+2. **When this happens** → **Smart Home**
 3. Find **"STYRBAR Alpha Up Short"**
-4. Select **Turns On**
-5. Tap **Next**
+4. Select **Turns On** ✓
+5. **Add action** → **Smart Home**
+6. Select "Living Room Lights"
+7. Choose **Power** → **On**
+8. **Enable** → **Save**
 
-**Add action:**
-1. Tap **Add action**
-2. Choose **Smart Home**
-3. Select your device (e.g., "Living Room Lights")
-4. Choose **Power** → **On**
-5. Tap **Next**
+**Routine 2: Turn lights OFF**
+1. Create another routine
+2. **When this happens** → **Smart Home**
+3. Find **"STYRBAR Alpha Up Short"**
+4. Select **Turns Off** ✓
+5. **Add action** → **Smart Home**
+6. Select "Living Room Lights"
+7. Choose **Power** → **Off**
+8. **Enable** → **Save**
 
-**Enabled:**
-1. Toggle **Enabled** to ON
-2. Tap **Save**
+**Result:** Press UP SHORT once = lights ON, press again = lights OFF
 
-Done! Now pressing UP SHORT will turn on your lights.
+---
+
+**Example 2: UP LONG = Brightness to 100% (momentary)**
+
+Since UP LONG is **momentary**, you need **ONE routine**:
+
+1. Open **Alexa app** → **More** → **Routines** → **+**
+2. **When this happens** → **Smart Home**
+3. Find **"STYRBAR Alpha Up Long"**
+4. Select **Turns On** ✓ (ignore Turns Off - it auto-resets)
+5. **Add action** → **Smart Home**
+6. Select "Living Room Lights"
+7. Choose **Brightness** → **100%**
+8. **Enable** → **Save**
+
+**Result:** Press and hold UP button = lights go to 100% brightness
+
+Done! Now pressing UP SHORT toggles lights, UP LONG sets them to 100%.
 
 ### Routine Ideas
 
+**Understanding Button Behavior:**
+- **Short press**: Toggle switch (stays ON or OFF)
+- **Long press**: Momentary (ON for 2 seconds, then OFF)
+
 **UP Buttons:**
-- UP Short: Turn lights ON / Brightness UP
-- UP Long: Set lights to 100% / Turn all lights ON
+- **UP Short**: Toggle main light ON/OFF
+  - When: STYRBAR Alpha Up Short **turns ON** → Turn light ON
+  - When: STYRBAR Alpha Up Short **turns OFF** → Turn light OFF
+- **UP Long**: Set brightness to 100% (momentary)
+  - When: STYRBAR Alpha Up Long **turns ON** → Set brightness 100%
 
 **DOWN Buttons:**
-- DOWN Short: Turn lights OFF / Brightness DOWN  
-- DOWN Long: Turn all lights OFF
+- **DOWN Short**: Toggle main light ON/OFF (same as UP Short)
+- **DOWN Long**: Set brightness to 10% / Night mode (momentary)
+  - When: STYRBAR Alpha Down Long **turns ON** → Set brightness 10%
 
 **LEFT/RIGHT Buttons:**
-- LEFT Short: Previous scene / Color warmer
-- RIGHT Short: Next scene / Color cooler
-- LEFT Long: Movie mode / Night mode
-- RIGHT Long: Bright mode / Party mode
+- **LEFT Short**: Toggle scene 1 / Color warm
+  - When: STYRBAR Alpha Left Short **turns ON** → Activate Scene 1
+  - When: STYRBAR Alpha Left Short **turns OFF** → Deactivate Scene 1
+- **RIGHT Short**: Toggle scene 2 / Color cool
+- **LEFT Long**: Movie mode (momentary)
+  - When: STYRBAR Alpha Left Long **turns ON** → Dim lights to 20%, Close blinds
+- **RIGHT Long**: Bright mode (momentary)
+  - When: STYRBAR Alpha Right Long **turns ON** → Brightness 100%, Open blinds
+
+**Key Insight:**
+- Short press routines need **TWO triggers** (turns ON and turns OFF)
+- Long press routines need **ONE trigger** (turns ON only)
 
 ### Advanced Routine Example
 
@@ -1531,6 +1590,15 @@ All entity IDs use "jupiter" consistently ✓
 
 ## FAQ
 
+**Q: Why do short press buttons toggle instead of auto-reset?**  
+A: Toggle behavior is better for most Alexa use cases. You can use one button for both ON and OFF actions. Long press buttons still auto-reset (momentary) for scene/mode changes.
+
+**Q: How many Alexa routines do I need per button?**  
+A: Short press = 2 routines (one for ON, one for OFF). Long press = 1 routine (only ON trigger needed).
+
+**Q: Can I change short press to momentary like long press?**  
+A: Yes, just change `input_boolean.toggle` to the long press pattern (turn_on → delay 2 → turn_off) in your automation file.
+
 **Q: Can I control HA devices instead of Alexa devices?**  
 A: Yes, but that's not what this guide is optimized for. Add custom actions to automation files if needed.
 
@@ -1599,15 +1667,17 @@ A: Common issue. Use only the 6 working buttons or update firmware.
 ## Credits
 
 **Created by:** Home Assistant Community  
-**Version:** 4.1 (Alexa-Optimized + Tested Z2M)  
+**Version:** 4.2 (Toggle + Momentary Optimized)  
 **License:** MIT  
 **Support:** Home Assistant Forums  
 **Tested with:** ZHA 0.58.0+, Zigbee2MQTT 1.35.0+, STYRBAR firmware 2.4.5/24.4.5
 
-**Special thanks:** Community members who tested and confirmed the device trigger method for Zigbee2MQTT.
+**Special thanks:** 
+- Community members who tested and confirmed the device trigger method
+- Users who contributed the improved toggle + momentary pattern
 
 ---
 
-**END OF RUNBOOK v4.1**
+**END OF RUNBOOK v4.2**
 
 Enjoy your smart button setup! 🎉

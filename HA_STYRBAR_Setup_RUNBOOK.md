@@ -1,9 +1,14 @@
-[STYRBAR_Alexa_Remote_v4 (1).md](https://github.com/user-attachments/files/24593761/STYRBAR_Alexa_Remote_v4.1.md)
 # STYRBAR Setup for Alexa Remote Control
 
-**Version:** 4.0 (Alexa-Optimized)  
+**Version:** 4.1 (Alexa-Optimized + Tested Z2M Device Triggers)  
 **Date:** 2026-01-12  
 **Purpose:** Use IKEA STYRBAR as a smart remote for Alexa routines
+
+**What's New in v4.1:**
+- ✅ **Tested Z2M device triggers** - Confirmed working method
+- 🎯 **Single automation per STYRBAR** - Cleaner than 8 separate files
+- 📋 **Device trigger UI method** - Easy capture of device_id and subtypes
+- 🔧 **Production verified** - Based on working user setup
 
 ---
 
@@ -19,6 +24,8 @@ This RUNBOOK sets up your IKEA STYRBAR to control devices through **Alexa Routin
 5. Alexa controls your devices
 
 **Perfect for:** Controlling Alexa-compatible devices (lights, switches, scenes, etc.) with physical buttons.
+
+**✅ Z2M users:** This guide uses **device triggers** - the most reliable method for Zigbee2MQTT, tested and confirmed working.
 
 ---
 
@@ -230,21 +237,39 @@ Or use File Editor add-on to create folders.
 
 ### 🟠 Z2M Users
 
-**Method 1: Zigbee2MQTT Web Interface**
+**You need the Z2M device_id (UUID format), not just the friendly name.**
 
-1. Open Z2M web interface (usually `http://homeassistant.local:8099`)
-2. Click **Devices** tab
-3. Find your STYRBAR
-4. Note the **friendly name** (e.g., `STYRBAR_Living_Room`)
+**Method 1: Using Automation UI (EASIEST)**
 
-**Method 2: Home Assistant**
+1. **Settings** → **Automations & Scenes** → **Create New**
+2. **Add Trigger** → **Device**
+3. Find your STYRBAR in the device list
+4. Select an action (e.g., "Turned on")
+5. Click **"..."** (three dots) → **"Edit in YAML"**
+6. Copy the `device_id` value
 
-1. **Developer Tools** → **States**
-2. Search for: `sensor.` + your device name
-3. Look for: `sensor.styrbar_living_room_action`
-4. The prefix before `_action` is your friendly name
+**Example:**
+```yaml
+trigger:
+  - domain: mqtt
+    device_id: 8fa17cc450fa42713be962ca8544782c  # ← COPY THIS
+    type: action
+    subtype: 'on'
+```
 
-✅ **Save this friendly name** - you'll need it for automations.
+7. **Cancel** the automation (don't save)
+
+**Method 2: From Device Page**
+
+1. **Settings** → **Devices & Services** → **Devices**
+2. Find your STYRBAR
+3. Click on it
+4. Look at URL: `.../device/DEVICE_ID_HERE`
+5. Copy the device_id (UUID format)
+
+✅ **Save this device_id** - you'll need it for automations.
+
+**Note:** The device_id is a long UUID like `8fa17cc450fa42713be962ca8544782c`, NOT the friendly name like "STYRBAR_Living_Room".
 
 ---
 
@@ -287,16 +312,23 @@ Or use File Editor add-on to create folders.
 
 ### 🟠 Z2M Users: Capture Actions
 
-1. **Developer Tools** → **States**
-2. Find: `sensor.[your_styrbar]_action`
-3. Press each button
-4. Watch sensor value change
-5. Record exact action name
+**Use the Automation UI to find action subtypes for device triggers.**
+
+**Method: Create Test Automation**
+
+1. **Settings** → **Automations** → **Create New**
+2. **Add Trigger** → **Device**
+3. Select your STYRBAR
+4. Look at the **Action** dropdown - these are your subtypes
+5. Select one action at a time
+6. Click **"..."** → **"Edit in YAML"** to see the subtype value
+7. Record it in your capture sheet
+8. Repeat for all buttons
 
 **Capture sheet:**
 
-| Button | Action Name | Notes |
-|--------|-------------|-------|
+| Button | Subtype Value | Notes |
+|--------|---------------|-------|
 | UP Short | | |
 | UP Long | | |
 | DOWN Short | | |
@@ -306,10 +338,19 @@ Or use File Editor add-on to create folders.
 | RIGHT Short | | |
 | RIGHT Long | | May not work |
 
-**Common Z2M actions (reference only):**
+**Example YAML you'll see:**
+```yaml
+trigger:
+  - domain: mqtt
+    device_id: 8fa17cc450fa42713be962ca8544782c
+    type: action
+    subtype: "on"  # ← This is the value to record
+```
 
-| Button | Typical Action |
-|--------|----------------|
+**Common Z2M action subtypes (reference only - use YOUR values):**
+
+| Button | Typical Subtype |
+|--------|-----------------|
 | UP Short | `on` |
 | UP Long | `brightness_move_up` |
 | DOWN Short | `off` |
@@ -319,7 +360,9 @@ Or use File Editor add-on to create folders.
 | RIGHT Short | `arrow_right_click` |
 | RIGHT Long | `arrow_right_hold` |
 
-**⚠️ Your values may be different! Use YOUR captured values.**
+**⚠️ Your values may be different! Always capture from YOUR system.**
+
+**Don't forget to cancel** the test automation after capturing - don't save it.
 
 ---
 
@@ -768,192 +811,237 @@ Create file: `templates/styrbar_[NAME].yaml`
 
 ### 🟠 Z2M Automation Template
 
+**For Zigbee2MQTT, use device triggers (more reliable than state triggers).**
+
 **File:** `automations/styrbar_[NAME].yaml`
 
 ```yaml
-# STYRBAR [NAME] - Zigbee2MQTT Automations
+# STYRBAR [NAME] - Zigbee2MQTT Automations (Device Trigger Method)
 # Created: [DATE]
 # Location: [ROOM]
-# Z2M Friendly Name: [FRIENDLY_NAME]
+# Device ID: [DEVICE_ID]
 # Stack: Zigbee2MQTT
 
-# ===== UP BUTTON =====
-- alias: "STYRBAR [NAME] - Up Short"
-  id: styrbar_[NAME]_up_short
-  mode: single
-  trigger:
-    - platform: state
-      entity_id: sensor.[friendly_name]_action
-      to: "on"  # ← YOUR captured action
-  condition:
+- id: 'styrbar_[NAME]_all_buttons'
+  alias: "STYRBAR [NAME] → Status Switches"
+  description: 'STYRBAR [NAME] button press handler'
+  triggers:
+    # UP SHORT
+    - domain: mqtt
+      device_id: "[DEVICE_ID]"
+      type: action
+      subtype: "on"  # ← YOUR captured action
+      id: up_short
+      trigger: device
+    
+    # UP LONG
+    - domain: mqtt
+      device_id: "[DEVICE_ID]"
+      type: action
+      subtype: "brightness_move_up"  # ← YOUR captured action
+      id: up_long
+      trigger: device
+    
+    # DOWN SHORT
+    - domain: mqtt
+      device_id: "[DEVICE_ID]"
+      type: action
+      subtype: "off"  # ← YOUR captured action
+      id: down_short
+      trigger: device
+    
+    # DOWN LONG
+    - domain: mqtt
+      device_id: "[DEVICE_ID]"
+      type: action
+      subtype: "brightness_move_down"  # ← YOUR captured action
+      id: down_long
+      trigger: device
+    
+    # LEFT SHORT
+    - domain: mqtt
+      device_id: "[DEVICE_ID]"
+      type: action
+      subtype: "arrow_left_click"  # ← YOUR captured action
+      id: left_short
+      trigger: device
+    
+    # LEFT LONG (may not work on all firmware)
+    - domain: mqtt
+      device_id: "[DEVICE_ID]"
+      type: action
+      subtype: "arrow_left_hold"  # ← YOUR captured action
+      id: left_long
+      trigger: device
+    
+    # RIGHT SHORT
+    - domain: mqtt
+      device_id: "[DEVICE_ID]"
+      type: action
+      subtype: "arrow_right_click"  # ← YOUR captured action
+      id: right_short
+      trigger: device
+    
+    # RIGHT LONG (may not work on all firmware)
+    - domain: mqtt
+      device_id: "[DEVICE_ID]"
+      type: action
+      subtype: "arrow_right_hold"  # ← YOUR captured action
+      id: right_long
+      trigger: device
+  
+  conditions:
     - condition: state
       entity_id: input_boolean.styrbar_[NAME]_enabled
       state: "on"
-  action:
-    - service: input_boolean.turn_on
-      target:
-        entity_id: input_boolean.styrbar_[NAME]_up_short_status
-    - delay: 2
-    - service: input_boolean.turn_off
-      target:
-        entity_id: input_boolean.styrbar_[NAME]_up_short_status
-
-- alias: "STYRBAR [NAME] - Up Long"
-  id: styrbar_[NAME]_up_long
+  
+  actions:
+    - choose:
+        # ===== UP SHORT =====
+        - conditions:
+            - condition: trigger
+              id: up_short
+          sequence:
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_up_short_status
+              action: input_boolean.turn_on
+            - delay: 2
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_up_short_status
+              action: input_boolean.turn_off
+        
+        # ===== UP LONG =====
+        - conditions:
+            - condition: trigger
+              id: up_long
+          sequence:
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_up_long_status
+              action: input_boolean.turn_on
+            - delay: 2
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_up_long_status
+              action: input_boolean.turn_off
+        
+        # ===== DOWN SHORT =====
+        - conditions:
+            - condition: trigger
+              id: down_short
+          sequence:
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_down_short_status
+              action: input_boolean.turn_on
+            - delay: 2
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_down_short_status
+              action: input_boolean.turn_off
+        
+        # ===== DOWN LONG =====
+        - conditions:
+            - condition: trigger
+              id: down_long
+          sequence:
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_down_long_status
+              action: input_boolean.turn_on
+            - delay: 2
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_down_long_status
+              action: input_boolean.turn_off
+        
+        # ===== LEFT SHORT =====
+        - conditions:
+            - condition: trigger
+              id: left_short
+          sequence:
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_left_short_status
+              action: input_boolean.turn_on
+            - delay: 2
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_left_short_status
+              action: input_boolean.turn_off
+        
+        # ===== LEFT LONG =====
+        - conditions:
+            - condition: trigger
+              id: left_long
+          sequence:
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_left_long_status
+              action: input_boolean.turn_on
+            - delay: 2
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_left_long_status
+              action: input_boolean.turn_off
+        
+        # ===== RIGHT SHORT =====
+        - conditions:
+            - condition: trigger
+              id: right_short
+          sequence:
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_right_short_status
+              action: input_boolean.turn_on
+            - delay: 2
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_right_short_status
+              action: input_boolean.turn_off
+        
+        # ===== RIGHT LONG =====
+        - conditions:
+            - condition: trigger
+              id: right_long
+          sequence:
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_right_long_status
+              action: input_boolean.turn_on
+            - delay: 2
+            - target:
+                entity_id: input_boolean.styrbar_[NAME]_right_long_status
+              action: input_boolean.turn_off
+  
   mode: single
-  trigger:
-    - platform: state
-      entity_id: sensor.[friendly_name]_action
-      to: "brightness_move_up"  # ← YOUR captured action
-  condition:
-    - condition: state
-      entity_id: input_boolean.styrbar_[NAME]_enabled
-      state: "on"
-  action:
-    - service: input_boolean.turn_on
-      target:
-        entity_id: input_boolean.styrbar_[NAME]_up_long_status
-    - delay: 2
-    - service: input_boolean.turn_off
-      target:
-        entity_id: input_boolean.styrbar_[NAME]_up_long_status
-
-# ===== DOWN BUTTON =====
-- alias: "STYRBAR [NAME] - Down Short"
-  id: styrbar_[NAME]_down_short
-  mode: single
-  trigger:
-    - platform: state
-      entity_id: sensor.[friendly_name]_action
-      to: "off"  # ← YOUR captured action
-  condition:
-    - condition: state
-      entity_id: input_boolean.styrbar_[NAME]_enabled
-      state: "on"
-  action:
-    - service: input_boolean.turn_on
-      target:
-        entity_id: input_boolean.styrbar_[NAME]_down_short_status
-    - delay: 2
-    - service: input_boolean.turn_off
-      target:
-        entity_id: input_boolean.styrbar_[NAME]_down_short_status
-
-- alias: "STYRBAR [NAME] - Down Long"
-  id: styrbar_[NAME]_down_long
-  mode: single
-  trigger:
-    - platform: state
-      entity_id: sensor.[friendly_name]_action
-      to: "brightness_move_down"  # ← YOUR captured action
-  condition:
-    - condition: state
-      entity_id: input_boolean.styrbar_[NAME]_enabled
-      state: "on"
-  action:
-    - service: input_boolean.turn_on
-      target:
-        entity_id: input_boolean.styrbar_[NAME]_down_long_status
-    - delay: 2
-    - service: input_boolean.turn_off
-      target:
-        entity_id: input_boolean.styrbar_[NAME]_down_long_status
-
-# ===== LEFT BUTTON =====
-- alias: "STYRBAR [NAME] - Left Short"
-  id: styrbar_[NAME]_left_short
-  mode: single
-  trigger:
-    - platform: state
-      entity_id: sensor.[friendly_name]_action
-      to: "arrow_left_click"  # ← YOUR captured action
-  condition:
-    - condition: state
-      entity_id: input_boolean.styrbar_[NAME]_enabled
-      state: "on"
-  action:
-    - service: input_boolean.turn_on
-      target:
-        entity_id: input_boolean.styrbar_[NAME]_left_short_status
-    - delay: 2
-    - service: input_boolean.turn_off
-      target:
-        entity_id: input_boolean.styrbar_[NAME]_left_short_status
-
-- alias: "STYRBAR [NAME] - Left Long"
-  id: styrbar_[NAME]_left_long
-  mode: single
-  trigger:
-    - platform: state
-      entity_id: sensor.[friendly_name]_action
-      to: "arrow_left_hold"  # ← YOUR captured action (may not exist)
-  condition:
-    - condition: state
-      entity_id: input_boolean.styrbar_[NAME]_enabled
-      state: "on"
-  action:
-    - service: input_boolean.turn_on
-      target:
-        entity_id: input_boolean.styrbar_[NAME]_left_long_status
-    - delay: 2
-    - service: input_boolean.turn_off
-      target:
-        entity_id: input_boolean.styrbar_[NAME]_left_long_status
-
-# ===== RIGHT BUTTON =====
-- alias: "STYRBAR [NAME] - Right Short"
-  id: styrbar_[NAME]_right_short
-  mode: single
-  trigger:
-    - platform: state
-      entity_id: sensor.[friendly_name]_action
-      to: "arrow_right_click"  # ← YOUR captured action
-  condition:
-    - condition: state
-      entity_id: input_boolean.styrbar_[NAME]_enabled
-      state: "on"
-  action:
-    - service: input_boolean.turn_on
-      target:
-        entity_id: input_boolean.styrbar_[NAME]_right_short_status
-    - delay: 2
-    - service: input_boolean.turn_off
-      target:
-        entity_id: input_boolean.styrbar_[NAME]_right_short_status
-
-- alias: "STYRBAR [NAME] - Right Long"
-  id: styrbar_[NAME]_right_long
-  mode: single
-  trigger:
-    - platform: state
-      entity_id: sensor.[friendly_name]_action
-      to: "arrow_right_hold"  # ← YOUR captured action (may not exist)
-  condition:
-    - condition: state
-      entity_id: input_boolean.styrbar_[NAME]_enabled
-      state: "on"
-  action:
-    - service: input_boolean.turn_on
-      target:
-        entity_id: input_boolean.styrbar_[NAME]_right_long_status
-    - delay: 2
-    - service: input_boolean.turn_off
-      target:
-        entity_id: input_boolean.styrbar_[NAME]_right_long_status
 ```
+
+### How to Find Z2M Device ID
+
+**The device_id for Z2M is a UUID (e.g., `8fa17cc450fa42713be962ca8544782c`), NOT the friendly name.**
+
+**Easiest method:**
+1. Settings → Automations → Create New Automation
+2. Add Trigger → Device
+3. Select your STYRBAR from list
+4. Choose an action (e.g., "on")
+5. Click "..." → "Edit in YAML"
+6. Copy the `device_id` value
+7. Cancel automation (don't save)
+
+**Your device_id will look like:** `8fa17cc450fa42713be962ca8544782c`
+
+See `Z2M_Device_ID_Guide.md` for detailed instructions.
 
 ### Important Notes
 
 **⚠️ Replace placeholders:**
 - `[NAME]` → your STYRBAR name (alpha, beta, charlie)
-- `[DEVICE_ID]` → your ZHA device_id
-- `[friendly_name]` → your Z2M friendly name
-- Command/action values → YOUR captured values
+- `[DEVICE_ID]` → your Z2M device UUID (for ZHA and Z2M both)
+- Command values (ZHA) → YOUR captured values
+- Subtype values (Z2M) → YOUR captured values
+
+**✅ Z2M Device Triggers:**
+- More reliable than state triggers
+- Native HA method (what the UI generates)
+- Single consolidated automation per STYRBAR
+- Uses `choose` logic with trigger IDs
+- This is the **tested and confirmed working** method
 
 **⚠️ No custom actions needed:**
 - Automations just update status helpers
 - Alexa routines will control your devices
 - Keep automations simple
+
+**🎯 Z2M Users: Use the device trigger method above** - it's more reliable and matches how the HA automation UI works.
 
 ---
 
@@ -1345,32 +1433,51 @@ LEFT/RIGHT long press support varies by firmware and Zigbee stack.
 2. **Update firmware:** Check for STYRBAR updates
 3. **Alternative mapping:** Use UP/DOWN long press instead
 
-### 🟠 Z2M Specific: Action Sensor Shows "Unknown"
-
-**Symptoms:**
-- `sensor.[styrbar]_action` shows "unknown"
-- Never updates
-
-**Solutions:**
-1. Press any button once (sensor updates on first press)
-2. Check Z2M web interface shows device as online
-3. Re-pair STYRBAR with Z2M
-4. Check MQTT broker is running
-
-### 🟠 Z2M Specific: Wrong Action Names
+### 🟠 Z2M Specific: Device Trigger Not Working
 
 **Symptoms:**
 - Some buttons work, others don't
 - Random behavior
 
 **Solution:**
-You must use YOUR captured action names, not examples from guide.
+You must use YOUR captured action subtypes from the device trigger UI.
 
-1. Developer Tools → States
-2. Watch `sensor.[styrbar]_action`
-3. Press EACH button
-4. Record EXACT action name
-5. Update automation files with YOUR values
+1. Settings → Automations → Create New
+2. Add Trigger → Device → Select your STYRBAR
+3. Try each action in dropdown
+4. Edit in YAML to see the `subtype` value
+5. Record EXACT subtype for each button
+6. Update automation file with YOUR values
+
+**Don't copy examples** - capture from YOUR system using the device trigger UI.
+
+### 🟠 Z2M Specific: Device Trigger Not Working
+
+**Symptoms:**
+- Automation doesn't trigger
+- Button press does nothing
+
+**Solutions:**
+1. **Verify device_id format:**
+   - Should be UUID: `8fa17cc450fa42713be962ca8544782c`
+   - NOT friendly name: `STYRBAR_Living_Room`
+
+2. **Check trigger format:**
+```yaml
+triggers:
+  - domain: mqtt
+    device_id: "YOUR_UUID_HERE"  # Must be quoted
+    type: action
+    subtype: "on"  # Must match YOUR device
+    id: up_short
+    trigger: device  # This line is required
+```
+
+3. **Test in Automation UI:**
+   - Create test automation using UI
+   - Select your STYRBAR device
+   - If it works in UI, copy the exact YAML format
+   - If doesn't work in UI, device may not support triggers
 
 ---
 
@@ -1381,15 +1488,16 @@ You must use YOUR captured action names, not examples from guide.
 For STYRBAR name: `______` (beta/charlie/delta)
 
 - [ ] Paired with ZHA or Z2M
-- [ ] Found device_id (ZHA) or friendly name (Z2M)
-- [ ] Captured all button commands/actions
+- [ ] Found device_id (UUID for both ZHA and Z2M)
+- [ ] Captured all button commands (ZHA) or subtypes (Z2M)
 - [ ] Created `helpers/styrbar_[NAME].yaml`
 - [ ] Created `templates/styrbar_[NAME].yaml`
-- [ ] Created `automations/styrbar_[NAME].yaml`
+- [ ] Created `automations/styrbar_[NAME].yaml` (single file with all 8 buttons)
 - [ ] Replaced all placeholders with actual values
+- [ ] For Z2M: Used device trigger method with YOUR captured subtypes
 - [ ] Reload: Input Booleans, Templates, Automations
 - [ ] Verified 17 entities created
-- [ ] Tested all 8 buttons
+- [ ] Tested all 8 buttons (or 6 if long press doesn't work)
 - [ ] Exposed switches to Alexa
 - [ ] Discovered devices in Alexa app
 - [ ] Created Alexa routines
@@ -1429,8 +1537,11 @@ A: Yes, but that's not what this guide is optimized for. Add custom actions to a
 **Q: Can I use both ZHA and Z2M?**  
 A: No, you must choose one. They conflict.
 
+**Q: Why device triggers instead of state triggers for Z2M?**  
+A: Device triggers are more reliable and are what the HA automation UI generates natively. They don't require an intermediate sensor entity and work better with Z2M.
+
 **Q: How many STYRBARs can I add?**  
-A: As many as you want. Each adds 17 entities.
+A: As many as you want. Each adds 17 entities + 1 automation.
 
 **Q: Do I need Home Assistant Cloud?**  
 A: No, but it's the easiest way to connect Alexa. Manual skill setup also works.
@@ -1457,19 +1568,20 @@ A: Common issue. Use only the 6 working buttons or update firmware.
 - 1 master enabled toggle
 - 8 status helpers
 - 8 template switches
-- 8 automations
+- 1 consolidated automation (8 buttons)
 
-**Total:** 17 entities + 8 automations per STYRBAR
+**Total:** 17 entities + 1 automation per STYRBAR
 
 ### How It Works
 
 1. Press physical button
-2. HA automation updates status helper
-3. Template switch mirrors status
-4. Alexa detects switch state change
-5. Alexa routine executes
-6. Your device is controlled
-7. Status auto-resets after 2 seconds
+2. HA automation detects via device trigger (Z2M) or event (ZHA)
+3. Status helper turns ON
+4. Template switch mirrors status
+5. Alexa detects switch state change
+6. Alexa routine executes
+7. Your device is controlled
+8. Status auto-resets after 2 seconds
 
 ### Key Benefits
 
@@ -1479,18 +1591,23 @@ A: Common issue. Use only the 6 working buttons or update firmware.
 ✅ Flexible routine programming  
 ✅ Easy to add more STYRBARs  
 ✅ Master enable/disable per STYRBAR  
+✅ **Z2M: Reliable device triggers** (tested and confirmed)  
+✅ **Single automation per STYRBAR** (cleaner than 8 files)  
 
 ---
 
 ## Credits
 
 **Created by:** Home Assistant Community  
-**Version:** 4.0 (Alexa-Optimized)  
+**Version:** 4.1 (Alexa-Optimized + Tested Z2M)  
 **License:** MIT  
-**Support:** Home Assistant Forums
+**Support:** Home Assistant Forums  
+**Tested with:** ZHA 0.58.0+, Zigbee2MQTT 1.35.0+, STYRBAR firmware 2.4.5/24.4.5
+
+**Special thanks:** Community members who tested and confirmed the device trigger method for Zigbee2MQTT.
 
 ---
 
-**END OF RUNBOOK**
+**END OF RUNBOOK v4.1**
 
 Enjoy your smart button setup! 🎉

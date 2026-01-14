@@ -348,12 +348,12 @@ trigger:
 
 | Button | Typical Subtype |
 |--------|-----------------|
-| POWER Short | `on` or `toggle` |
+| POWER Short | `on` |
 | POWER Long | `brightness_move_up` |
-| DIMMER Short | `brightness_step_up` or `brightness_step_down` |
+| DIMMER Short | `off` |
 | DIMMER Long | `brightness_move_down` |
 
-**⚠️ These are EXAMPLES. Use the dropdown to find YOUR device's actual subtypes.**
+**⚠️ These are the most common values, but you should still verify using the dropdown method to confirm YOUR device uses these exact subtypes.**
 
 **Example automation UI check:**
 
@@ -664,7 +664,7 @@ rodret_alpha_dimmer_long_status:
     - domain: mqtt
       device_id: YOUR_Z2M_DEVICE_ID_HERE
       type: action
-      subtype: YOUR_CAPTURED_SUBTYPE_HERE
+      subtype: "on"
       id: power_short
       trigger: device
   conditions:
@@ -687,7 +687,7 @@ rodret_alpha_dimmer_long_status:
     - domain: mqtt
       device_id: YOUR_Z2M_DEVICE_ID_HERE
       type: action
-      subtype: YOUR_CAPTURED_SUBTYPE_HERE
+      subtype: "brightness_move_up"
       id: power_long
       trigger: device
   conditions:
@@ -724,7 +724,7 @@ rodret_alpha_dimmer_long_status:
     - domain: mqtt
       device_id: YOUR_Z2M_DEVICE_ID_HERE
       type: action
-      subtype: YOUR_CAPTURED_SUBTYPE_HERE
+      subtype: "off"
       id: dimmer_short
       trigger: device
   conditions:
@@ -747,7 +747,7 @@ rodret_alpha_dimmer_long_status:
     - domain: mqtt
       device_id: YOUR_Z2M_DEVICE_ID_HERE
       type: action
-      subtype: YOUR_CAPTURED_SUBTYPE_HERE
+      subtype: "brightness_move_down"
       id: dimmer_long
       trigger: device
   conditions:
@@ -776,9 +776,14 @@ rodret_alpha_dimmer_long_status:
 
 **🟠 Z2M - Required changes:**
 1. Replace `YOUR_Z2M_DEVICE_ID_HERE` with UUID from Step 1
-2. Replace `YOUR_CAPTURED_SUBTYPE_HERE` with subtypes from Step 2 (for each button)
-3. Keep `domain: mqtt`, `type: action`, `trigger: device` - these are fixed
-4. Replace `alpha` throughout with your chosen name
+2. Subtypes are pre-filled with common values:
+   - Power short: `"on"`
+   - Power long: `"brightness_move_up"`
+   - Dimmer short: `"off"`
+   - Dimmer long: `"brightness_move_down"`
+3. **⚠️ Verify these match YOUR device** using Step 2 capture method
+4. Keep `domain: mqtt`, `type: action`, `trigger: device` - these are fixed
+5. Replace `alpha` throughout with your chosen name
 
 ---
 
